@@ -1,4 +1,5 @@
-﻿import BookingDetail from "./BookingDetail";
+﻿import { headers } from "next/headers";
+import BookingDetail from "./BookingDetail";
 
 type Customer = {
   customer_identity: string;
@@ -42,23 +43,41 @@ type PageProps = {
   }>;
 };
 
+async function getBaseUrl() {
+  const headersList = await headers();
+  const host = headersList.get("host");
+
+  if (!host) {
+    throw new Error("Missing request host");
+  }
+
+  const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
+  return `${protocol}://${host}`;
+}
+
 async function getCustomerDetail(
   customerId: string
 ): Promise<CustomerDetailResponse | null> {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  try {
+    const baseUrl = await getBaseUrl();
 
-  const response = await fetch(
-    `${baseUrl}/api/customers/${encodeURIComponent(customerId)}`,
-    {
-      cache: "no-store",
+    const response = await fetch(
+      `${baseUrl}/api/customers/${encodeURIComponent(customerId)}`,
+      {
+        cache: "no-store",
+      }
+    );
+
+    if (!response.ok) {
+      console.error("Customer detail API error:", response.status);
+      return null;
     }
-  );
 
-  if (!response.ok) {
+    return response.json();
+  } catch (error) {
+    console.error("Fetch customer detail failed:", error);
     return null;
   }
-
-  return response.json();
 }
 
 export default async function CustomerDetailPage({ params }: PageProps) {

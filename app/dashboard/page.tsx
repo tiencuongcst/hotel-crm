@@ -1,10 +1,35 @@
-async function getDashboardMetrics() {
-  const res = await fetch("http://localhost:3000/api/dashboard", {
-    cache: "no-store",
-  });
+﻿import { headers } from "next/headers";
 
-  if (!res.ok) return { metrics: null };
-  return res.json();
+async function getBaseUrl() {
+  const headersList = await headers();
+  const host = headersList.get("host");
+
+  if (!host) {
+    throw new Error("Missing host");
+  }
+
+  const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
+  return `${protocol}://${host}`;
+}
+
+async function getDashboardMetrics() {
+  try {
+    const baseUrl = await getBaseUrl();
+
+    const res = await fetch(`${baseUrl}/api/dashboard`, {
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      console.error("Dashboard API error:", res.status);
+      return { metrics: null };
+    }
+
+    return res.json();
+  } catch (error) {
+    console.error("Fetch dashboard failed:", error);
+    return { metrics: null };
+  }
 }
 
 function numberValue(value: number | null | undefined) {
@@ -15,7 +40,13 @@ function formatNumber(value: number | null | undefined) {
   return numberValue(value).toLocaleString("vi-VN");
 }
 
-function Card({ title, value }: { title: string; value: number | null | undefined }) {
+function Card({
+  title,
+  value,
+}: {
+  title: string;
+  value: number | null | undefined;
+}) {
   return (
     <div className="rounded-xl border p-4">
       <p className="text-sm text-slate-500">{title}</p>
