@@ -7,6 +7,26 @@ type RouteContext = {
   }>;
 };
 
+type Customer = {
+  customer_identity: string;
+  identity_key: string | null;
+  customer_name: string | null;
+  phone: string | null;
+  phone_key: string | null;
+  email: string | null;
+  total_stays: number;
+  loyalty_stays: number;
+  tier: string | null;
+  tier_priority: number | null;
+  identity_source: string | null;
+  is_loyalty_eligible: boolean | null;
+  first_stay: string | null;
+  last_stay: string | null;
+  hotel_codes: string[] | null;
+  source_customer_ids: string[] | null;
+  updated_at: string | null;
+};
+
 type CustomerStay = {
   stay_id: string;
   source_customer_id: string | null;
@@ -23,6 +43,11 @@ type CustomerStay = {
   is_loyalty_eligible: boolean | null;
 };
 
+type CustomerNote = {
+  car: string | null;
+  customer_profile: string | null;
+};
+
 export async function GET(_request: Request, context: RouteContext) {
   try {
     const { customerId } = await context.params;
@@ -35,6 +60,13 @@ export async function GET(_request: Request, context: RouteContext) {
     }
 
     const normalizedCustomerId = decodeURIComponent(customerId).trim();
+
+    if (!normalizedCustomerId) {
+      return NextResponse.json(
+        { error: "Invalid customerId" },
+        { status: 400 }
+      );
+    }
 
     const { data: customer, error: customerError } = await supabase
       .from("v_crm_customers")
@@ -60,7 +92,8 @@ export async function GET(_request: Request, context: RouteContext) {
         ].join(",")
       )
       .eq("customer_identity", normalizedCustomerId)
-      .maybeSingle();
+      .maybeSingle()
+      .returns<Customer>();
 
     if (customerError) {
       return NextResponse.json(
@@ -79,6 +112,23 @@ export async function GET(_request: Request, context: RouteContext) {
           customerId: normalizedCustomerId,
         },
         { status: 404 }
+      );
+    }
+
+    const { data: customerNote, error: customerNoteError } = await supabase
+      .from("crm_customer_notes")
+      .select(["car", "customer_profile"].join(","))
+      .eq("customer_identity", normalizedCustomerId)
+      .maybeSingle()
+      .returns<CustomerNote>();
+
+    if (customerNoteError) {
+      return NextResponse.json(
+        {
+          error: "Failed to load customer notes",
+          details: customerNoteError.message,
+        },
+        { status: 500 }
       );
     }
 
@@ -131,7 +181,11 @@ export async function GET(_request: Request, context: RouteContext) {
     }
 
     return NextResponse.json({
-      customer,
+      customer: {
+        ...customer,
+        car: customerNote?.car ?? null,
+        customer_profile: customerNote?.customer_profile ?? null,
+      },
       bookingCodes,
       stays: stays ?? [],
     });

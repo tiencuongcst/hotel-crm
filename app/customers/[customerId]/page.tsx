@@ -1,5 +1,6 @@
 ﻿import { headers } from "next/headers";
 import BookingDetail from "./BookingDetail";
+import CustomerNotesForm from "./CustomerNotesForm";
 
 type Customer = {
   customer_identity: string;
@@ -13,6 +14,8 @@ type Customer = {
   identity_source: string | null;
   first_stay: string | null;
   last_stay: string | null;
+  car: string | null;
+  customer_profile: string | null;
 };
 
 type Stay = {
@@ -115,6 +118,12 @@ export default async function CustomerDetailPage({ params }: PageProps) {
         </p>
       </section>
 
+      <CustomerNotesForm
+        customerId={customer.customer_identity}
+        initialCar={customer.car}
+        initialCustomerProfile={customer.customer_profile}
+      />
+
       <h2>Booking history</h2>
 
       {stays.length === 0 ? (
@@ -147,12 +156,7 @@ export default async function CustomerDetailPage({ params }: PageProps) {
                   <td style={tdStyle}>{stay.hotel_code ?? "-"}</td>
                   <td style={tdStyle}>
                     <details>
-                      <summary
-                        style={{
-                          cursor: "pointer",
-                          fontWeight: 700,
-                        }}
-                      >
+                      <summary style={{ cursor: "pointer", fontWeight: 700 }}>
                         View detail
                       </summary>
 
