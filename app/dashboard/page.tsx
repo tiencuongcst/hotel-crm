@@ -1,16 +1,36 @@
-﻿import { createClient } from "@supabase/supabase-js";
+﻿import { headers } from "next/headers";
 
-type Metrics = {
-  total_customers: number;
-  loyalty_customers: number;
-  total_stays: number;
-  loyalty_stays: number;
-  new_customers: number;
-  silver_customers: number;
-  gold_customers: number;
-  platinum_customers: number;
-  loyalty_points: number;
-};
+async function getBaseUrl() {
+  const headersList = await headers();
+  const host = headersList.get("host");
+
+  if (!host) {
+    throw new Error("Missing request host");
+  }
+
+  const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
+  return `${protocol}://${host}`;
+}
+
+async function getDashboardMetrics() {
+  try {
+    const baseUrl = await getBaseUrl();
+
+    const res = await fetch(`${baseUrl}/api/dashboard`, {
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      console.error("Dashboard API error:", res.status, await res.text());
+      return { metrics: null };
+    }
+
+    return res.json();
+  } catch (error) {
+    console.error("Dashboard fetch failed:", error);
+    return { metrics: null };
+  }
+}
 
 function numberValue(value: number | null | undefined) {
   return typeof value === "number" ? value : 0;
@@ -20,7 +40,13 @@ function formatNumber(value: number | null | undefined) {
   return numberValue(value).toLocaleString("vi-VN");
 }
 
-function Card({ title, value }: { title: string; value: number | null | undefined }) {
+function Card({
+  title,
+  value,
+}: {
+  title: string;
+  value: number | null | undefined;
+}) {
   return (
     <div className="rounded-xl border p-4">
       <p className="text-sm text-slate-500">{title}</p>
@@ -29,38 +55,8 @@ function Card({ title, value }: { title: string; value: number | null | undefine
   );
 }
 
-async function getDashboardMetrics(): Promise<Metrics | null> {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-
-  const { data, error } = await supabase
-    .from("dashboard_metrics") // 👈 VIEW trong DB
-    .select(`
-      total_customers,
-      loyalty_customers,
-      total_stays,
-      loyalty_stays,
-      new_customers,
-      silver_customers,
-      gold_customers,
-      platinum_customers,
-      loyalty_points
-    `)
-    .limit(1)
-    .single();
-
-  if (error) {
-    console.error("Dashboard fetch error:", error);
-    return null;
-  }
-
-  return data;
-}
-
 export default async function DashboardPage() {
-  const metrics = await getDashboardMetrics();
+  const { metrics } = await getDashboardMetrics();
 
   if (!metrics) {
     return <div className="p-6">Failed to load dashboard</div>;
