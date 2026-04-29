@@ -39,11 +39,18 @@ function parsePositiveInteger(value: string | null, fallback: number) {
   return parsedValue;
 }
 
+function escapeSearchValue(value: string) {
+  return value.replaceAll("%", "\\%").replaceAll("_", "\\_");
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
 
-    const search = sanitizeSearchParam(searchParams.get("search"));
+    const search = sanitizeSearchParam(
+      searchParams.get("search") ?? searchParams.get("q")
+    );
+
     const tier = sanitizeSearchParam(searchParams.get("tier"));
     const page = parsePositiveInteger(searchParams.get("page"), 1);
     const pageSize = Math.min(
@@ -81,32 +88,47 @@ export async function GET(request: Request) {
           "notes_updated_at",
         ].join(","),
         { count: "exact" }
-      )
-      .order("tier_priority", { ascending: false })
-      .order("total_stays", { ascending: false })
-      .order("last_stay", { ascending: false })
-      .range(from, to);
+      );
 
     if (tier && tier !== "all") {
       query = query.eq("tier", tier);
     }
 
     if (search) {
-      const escapedSearch = search.replaceAll("%", "\\%").replaceAll("_", "\\_");
-
-      query = query.or(
-        [
-          `customer_identity.ilike.%${escapedSearch}%`,
-          `customer_name.ilike.%${escapedSearch}%`,
-          `phone.ilike.%${escapedSearch}%`,
-          `email.ilike.%${escapedSearch}%`,
-          `car.ilike.%${escapedSearch}%`,
-          `customer_profile.ilike.%${escapedSearch}%`,
-        ].join(",")
+      const keywords = Array.from(
+        new Set(
+          [
+            search,
+            ...search
+              .split(/\s+/)
+              .map((keyword) => keyword.trim())
+              .filter(Boolean),
+          ].filter(Boolean)
+        )
       );
+
+      const orFilters = keywords.flatMap((keyword) => {
+        const safeKeyword = escapeSearchValue(keyword);
+
+        return [
+          `customer_identity.ilike.%${safeKeyword}%`,
+          `customer_name.ilike.%${safeKeyword}%`,
+          `phone.ilike.%${safeKeyword}%`,
+          `email.ilike.%${safeKeyword}%`,
+          `car.ilike.%${safeKeyword}%`,
+          `customer_profile.ilike.%${safeKeyword}%`,
+        ];
+      });
+
+      query = query.or(orFilters.join(","));
     }
 
-    const { data, error, count } = await query.returns<CustomerRow[]>();
+    const { data, error, count } = await query
+      .order("tier_priority", { ascending: false })
+      .order("total_stays", { ascending: false })
+      .order("last_stay", { ascending: false })
+      .range(from, to)
+      .returns<CustomerRow[]>();
 
     if (error) {
       return NextResponse.json(
