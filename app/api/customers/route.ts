@@ -13,6 +13,7 @@ type CustomerRow = {
   hotel_codes: string[] | null;
   car: string | null;
   customer_profile: string | null;
+  total_count?: number;
 };
 
 function sanitizeText(value: string | null): string {
@@ -65,17 +66,13 @@ export async function GET(request: Request) {
 
     const offset = (page - 1) * pageSize;
 
-    // ✅ CALL RPC (DB handles filter + pagination)
-    const { data, error } = await supabase.rpc(
-      "search_customers_enriched",
-      {
-        input_search: search,
-        input_hotel_codes: hotelCodes,
-        input_tier: tier && tier !== "all" ? tier : null,
-        input_limit: pageSize,
-        input_offset: offset,
-      }
-    );
+    const { data, error } = await supabase.rpc("search_customers_enriched", {
+      input_search: search,
+      input_hotel_codes: hotelCodes,
+      input_tier: tier && tier !== "all" ? tier : null,
+      input_limit: pageSize,
+      input_offset: offset,
+    });
 
     if (error) {
       return NextResponse.json(
@@ -87,19 +84,22 @@ export async function GET(request: Request) {
       );
     }
 
-    const customers = (data ?? []) as CustomerRow[];
+    const rows = (data ?? []) as CustomerRow[];
 
-    // ⚠️ NOTE:
-    // Supabase RPC chưa trả total count → pagination chỉ estimate
-    // (có thể nâng cấp sau bằng COUNT RPC riêng)
+    const total = rows[0]?.total_count ?? rows.length;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+    const customers = rows.map(({ total_count, ...customer }) => customer);
 
     return NextResponse.json({
       customers,
       pagination: {
         page,
         pageSize,
-        total: customers.length, // temporary
-        totalPages: customers.length < pageSize ? page : page + 1,
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
       },
     });
   } catch (error) {
