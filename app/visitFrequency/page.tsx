@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
 type PageProps = {
@@ -13,7 +14,6 @@ export default async function VisitFrequencyPage({ searchParams }: PageProps) {
   const hotel = params?.hotel ?? "ALL";
   const minStays = Number(params?.stays ?? 1);
 
-  // ✅ load hotels (source of truth)
   const { data: hotels } = await supabase
     .from("hotels")
     .select("hotel_code, hotel_name")
@@ -22,7 +22,8 @@ export default async function VisitFrequencyPage({ searchParams }: PageProps) {
 
   let query = supabase
     .from("v_loyal_customers")
-    .select(`
+    .select(
+      `
       customer_identity,
       customer_name,
       phone,
@@ -31,7 +32,8 @@ export default async function VisitFrequencyPage({ searchParams }: PageProps) {
       first_stay,
       last_stay,
       hotel_codes
-    `)
+    `
+    )
     .gte("loyalty_stays", minStays)
     .order("loyalty_stays", { ascending: true })
     .order("last_stay", { ascending: false })
@@ -48,7 +50,6 @@ export default async function VisitFrequencyPage({ searchParams }: PageProps) {
     <main className="p-6">
       <h1 className="text-3xl font-bold">Visit Frequency</h1>
 
-      {/* ✅ FILTER chuẩn */}
       <form className="mb-4 flex items-center gap-2">
         <label className="font-semibold">Hotel:</label>
 
@@ -59,9 +60,9 @@ export default async function VisitFrequencyPage({ searchParams }: PageProps) {
         >
           <option value="ALL">ALL</option>
 
-          {(hotels ?? []).map((h) => (
-            <option key={h.hotel_code} value={h.hotel_code}>
-              {h.hotel_code} - {h.hotel_name}
+          {(hotels ?? []).map((hotelOption) => (
+            <option key={hotelOption.hotel_code} value={hotelOption.hotel_code}>
+              {hotelOption.hotel_code} - {hotelOption.hotel_name}
             </option>
           ))}
         </select>
@@ -101,24 +102,33 @@ export default async function VisitFrequencyPage({ searchParams }: PageProps) {
 
           <tbody>
             {customers.map((customer: any) => (
-              <tr key={customer.customer_identity} className="border-t">
+              <tr
+                key={customer.customer_identity}
+                className="border-t hover:bg-slate-50"
+              >
                 <td className="px-4 py-3 font-semibold">
-                  {customer.customer_identity}
+                  <Link
+                    href={`/customers/${customer.customer_identity}`}
+                    className="text-blue-700 hover:underline"
+                  >
+                    {customer.customer_identity}
+                  </Link>
                 </td>
+
                 <td className="px-4 py-3">
-                  {customer.customer_name ?? "-"}
+                  <Link
+                    href={`/customers/${customer.customer_identity}`}
+                    className="hover:underline"
+                  >
+                    {customer.customer_name ?? "-"}
+                  </Link>
                 </td>
+
                 <td className="px-4 py-3">{customer.phone ?? "-"}</td>
-                <td className="px-4 py-3">
-                  {customer.loyalty_stays ?? 0}
-                </td>
+                <td className="px-4 py-3">{customer.loyalty_stays ?? 0}</td>
                 <td className="px-4 py-3">{customer.tier ?? "-"}</td>
-                <td className="px-4 py-3">
-                  {customer.first_stay ?? "-"}
-                </td>
-                <td className="px-4 py-3">
-                  {customer.last_stay ?? "-"}
-                </td>
+                <td className="px-4 py-3">{customer.first_stay ?? "-"}</td>
+                <td className="px-4 py-3">{customer.last_stay ?? "-"}</td>
               </tr>
             ))}
           </tbody>

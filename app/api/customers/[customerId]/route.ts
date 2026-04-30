@@ -51,73 +51,57 @@ type CustomerNote = {
 export async function GET(_request: Request, context: RouteContext) {
   try {
     const { customerId } = await context.params;
+    const normalizedCustomerId = decodeURIComponent(customerId ?? "").trim();
 
-    if (!customerId) {
+    if (!normalizedCustomerId) {
       return NextResponse.json(
         { error: "customerId is required" },
         { status: 400 }
       );
     }
 
-    const normalizedCustomerId = decodeURIComponent(customerId).trim();
-
-    if (!normalizedCustomerId) {
-      return NextResponse.json(
-        { error: "Invalid customerId" },
-        { status: 400 }
-      );
-    }
-
     const { data: customer, error: customerError } = await supabase
       .from("v_crm_customers")
-      .select(
-        [
-          "customer_identity",
-          "identity_key",
-          "customer_name",
-          "phone",
-          "phone_key",
-          "email",
-          "total_stays",
-          "loyalty_stays",
-          "tier",
-          "tier_priority",
-          "identity_source",
-          "is_loyalty_eligible",
-          "first_stay",
-          "last_stay",
-          "hotel_codes",
-          "source_customer_ids",
-          "updated_at",
-        ].join(",")
-      )
+      .select(`
+        customer_identity,
+        identity_key,
+        customer_name,
+        phone,
+        phone_key,
+        email,
+        total_stays,
+        loyalty_stays,
+        tier,
+        tier_priority,
+        identity_source,
+        is_loyalty_eligible,
+        first_stay,
+        last_stay,
+        hotel_codes,
+        source_customer_ids,
+        updated_at
+      `)
       .eq("customer_identity", normalizedCustomerId)
       .maybeSingle()
       .returns<Customer>();
 
     if (customerError) {
       return NextResponse.json(
-        {
-          error: "Failed to load customer",
-          details: customerError.message,
-        },
+        { error: "Failed to load customer", details: customerError.message },
         { status: 500 }
       );
     }
 
     if (!customer) {
       return NextResponse.json(
-        {
-          error: "Customer not found",
-          customerId: normalizedCustomerId,
-        },
+        { error: "Customer not found", customerId: normalizedCustomerId },
         { status: 404 }
       );
     }
 
     const { data: customerNote, error: customerNoteError } = await supabase
       .from("crm_customer_notes")
-      .select(["car", "customer_profile"].join(","))
+      .select("car, customer_profile")
       .eq("customer_identity", normalizedCustomerId)
       .maybeSingle()
       .returns<CustomerNote>();
@@ -134,23 +118,21 @@ export async function GET(_request: Request, context: RouteContext) {
 
     const { data: stays, error: staysError } = await supabase
       .from("crm_customer_stays_snapshot")
-      .select(
-        [
-          "stay_id",
-          "source_customer_id",
-          "customer_identity",
-          "customer_name",
-          "normalized_phone",
-          "phone_key",
-          "normalized_email",
-          "booking_code",
-          "check_in_date",
-          "check_out_date",
-          "hotel_code",
-          "identity_source",
-          "is_loyalty_eligible",
-        ].join(",")
-      )
+      .select(`
+        stay_id,
+        source_customer_id,
+        customer_identity,
+        customer_name,
+        normalized_phone,
+        phone_key,
+        normalized_email,
+        booking_code,
+        check_in_date,
+        check_out_date,
+        hotel_code,
+        identity_source,
+        is_loyalty_eligible
+      `)
       .eq("customer_identity", normalizedCustomerId)
       .order("check_in_date", { ascending: false })
       .limit(200)
@@ -158,27 +140,18 @@ export async function GET(_request: Request, context: RouteContext) {
 
     if (staysError) {
       return NextResponse.json(
-        {
-          error: "Failed to load customer stays",
-          details: staysError.message,
-        },
+        { error: "Failed to load customer stays", details: staysError.message },
         { status: 500 }
       );
     }
 
-    const bookingCodes: string[] = [];
-
-    for (const stay of stays ?? []) {
-      const bookingCode = stay.booking_code;
-
-      if (
-        typeof bookingCode === "string" &&
-        bookingCode.trim() !== "" &&
-        !bookingCodes.includes(bookingCode)
-      ) {
-        bookingCodes.push(bookingCode);
-      }
-    }
+    const bookingCodes = Array.from(
+      new Set(
+        (stays ?? [])
+          .map((stay) => stay.booking_code?.trim())
+          .filter((bookingCode): bookingCode is string => Boolean(bookingCode))
+      )
+    );
 
     return NextResponse.json({
       customer: {

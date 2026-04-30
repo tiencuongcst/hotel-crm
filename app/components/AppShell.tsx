@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import UserPanel from "./UserPanel";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard" },
@@ -14,37 +18,34 @@ type Branding = {
   company_name?: string;
 };
 
-async function getBranding(): Promise<Branding> {
-  const { data, error } = await supabase
-    .from("app_settings")
-    .select("setting_value")
-    .eq("setting_key", "app_branding")
-    .eq("active", true)
-    .limit(1)
-    .maybeSingle();
+export default function AppShell({ children }: { children: React.ReactNode }) {
+  const [branding, setBranding] = useState<Branding>({
+    app_name: "Hotel CRM",
+    company_name: "Khánh Phát Investment",
+  });
 
-  if (error || !data?.setting_value) {
-    return {
-      app_name: "Hotel CRM",
-      company_name: "Khánh Phát Investment",
-    };
-  }
+  useEffect(() => {
+    async function loadBranding() {
+      const { data, error } = await supabase
+        .from("app_settings")
+        .select("setting_value")
+        .eq("setting_key", "app_branding")
+        .eq("active", true)
+        .limit(1)
+        .maybeSingle();
 
-  return data.setting_value as Branding;
-}
+      if (!error && data?.setting_value) {
+        setBranding(data.setting_value as Branding);
+      }
+    }
 
-export default async function AppShell({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const branding = await getBranding();
+    loadBranding();
+  }, []);
 
   return (
     <div className="flex min-h-screen bg-gray-50">
       <aside className="w-64 border-r bg-white">
         <div className="border-b p-5">
-          {/* 🔥 DYNAMIC FROM DB */}
           <h1 className="text-xl font-bold">
             {branding.app_name ?? "Hotel CRM"}
           </h1>
@@ -64,6 +65,10 @@ export default async function AppShell({
             </Link>
           ))}
         </nav>
+
+        <div className="border-t p-4">
+          <UserPanel />
+        </div>
       </aside>
 
       <section className="flex-1 overflow-auto">{children}</section>

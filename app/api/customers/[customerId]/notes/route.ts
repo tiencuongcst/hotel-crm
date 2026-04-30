@@ -21,55 +21,45 @@ function normalizeText(value: unknown): string | null {
   return trimmedValue === "" ? null : trimmedValue;
 }
 
+async function parseJsonBody(request: Request): Promise<CustomerNotesPayload> {
+  try {
+    return (await request.json()) as CustomerNotesPayload;
+  } catch {
+    return {};
+  }
+}
+
 export async function POST(request: Request, context: RouteContext) {
   try {
     const { customerId } = await context.params;
+    const normalizedCustomerId = decodeURIComponent(customerId ?? "").trim();
 
-    if (!customerId) {
+    if (!normalizedCustomerId) {
       return NextResponse.json(
         { error: "customerId is required" },
         { status: 400 }
       );
     }
 
-    const normalizedCustomerId = decodeURIComponent(customerId).trim();
-
-    if (!normalizedCustomerId) {
-      return NextResponse.json(
-        { error: "Invalid customerId" },
-        { status: 400 }
-      );
-    }
-
-    const body = (await request.json()) as CustomerNotesPayload;
+    const body = await parseJsonBody(request);
 
     const car = normalizeText(body.car);
     const customerProfile = normalizeText(body.customer_profile);
 
-    /**
-     * TEMP:
-     * Chưa có login system nên dùng system.
-     *
-     * Sau này khi có Supabase Auth:
-     * const user = await getCurrentUser();
-     * const updatedBy = user.email;
-     */
     const updatedBy = "system";
 
-    const { error } = await supabase
-      .from("crm_customer_notes")
-      .upsert(
-        {
-          customer_identity: normalizedCustomerId,
-          car,
-          customer_profile: customerProfile,
-          updated_by: updatedBy,
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: "customer_identity",
-        }
-      );
+    const { error } = await supabase.from("crm_customer_notes").upsert(
+      {
+        customer_identity: normalizedCustomerId,
+        car,
+        customer_profile: customerProfile,
+        updated_by: updatedBy,
+        updated_at: new Date().toISOString(),
+      },
+      {
+        onConflict: "customer_identity",
+      }
+    );
 
     if (error) {
       return NextResponse.json(
@@ -84,6 +74,8 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({
       success: true,
       customer_identity: normalizedCustomerId,
+      car,
+      customer_profile: customerProfile,
       updated_by: updatedBy,
     });
   } catch (error) {

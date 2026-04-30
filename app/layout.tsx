@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import AppShell from "./components/AppShell";
+import RootShell from "./components/RootShell";
 
 export const metadata: Metadata = {
   title: "Hotel CRM",
@@ -15,7 +15,7 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <body>
-        <AppShell>{children}</AppShell>
+        <RootShell>{children}</RootShell>
       </body>
     </html>
   );
