@@ -1,16 +1,20 @@
-"use client";
-
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { getCurrentUser, CurrentUser } from "@/lib/currentUser";
 
-type Hotel = {
+type PageProps = {
+  searchParams?: Promise<{
+    hotel?: string;
+    search?: string;
+    q?: string;
+  }>;
+};
+
+type HotelRow = {
   hotel_code: string;
   hotel_name: string | null;
 };
 
-type Customer = {
+type CustomerRow = {
   customer_identity: string;
   customer_name: string | null;
   phone: string | null;
@@ -22,184 +26,190 @@ type Customer = {
   hotel_codes: string[] | null;
 };
 
-export default function CustomersPage() {
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
-  const [hotels, setHotels] = useState<Hotel[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [selectedHotel, setSelectedHotel] = useState("ALL");
-  const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState("");
-
-  useEffect(() => {
-    const user = getCurrentUser();
-    setCurrentUser(user);
-  }, []);
-
-  const visibleHotels = useMemo(() => {
-    if (!currentUser) return [];
-    if (currentUser.is_admin) return hotels;
-
-    return hotels.filter((hotel) =>
-      currentUser.hotel_codes?.includes(hotel.hotel_code)
-    );
-  }, [currentUser, hotels]);
-
-  async function loadHotels() {
-    const { data, error } = await supabase
-      .from("hotels")
-      .select("hotel_code, hotel_name")
-      .eq("active", true)
-      .order("hotel_code", { ascending: true });
-
-    if (error) {
-      setErrorMessage("Cannot load hotels");
-      return;
-    }
-
-    setHotels(data ?? []);
-  }
-
-  async function loadCustomers(
-  user: CurrentUser,
-  hotel: string,
-  keyword: string
-) {
-  setLoading(true);
-  setErrorMessage("");
-
-  const hotelCodesForSearch =
-    user.is_admin
-      ? hotel === "ALL"
-        ? null
-        : [hotel]
-      : hotel === "ALL"
-        ? user.hotel_codes
-        : [hotel];
-
-  if (!user.is_admin && (!hotelCodesForSearch || hotelCodesForSearch.length === 0)) {
-    setCustomers([]);
-    setLoading(false);
-    return;
-  }
-
-  const { data, error } = await supabase.rpc("search_customers_enriched", {
-    input_search: keyword.trim(),
-    input_hotel_codes: hotelCodesForSearch,
-    input_limit: 100,
-  });
-
-  if (error) {
-    console.error("Search customers failed:", error);
-    setErrorMessage("Cannot load customers");
-    setCustomers([]);
-  } else {
-    setCustomers(data ?? []);
-  }
-
-  setLoading(false);
+function sanitizeText(value: string | undefined): string {
+  return value?.trim() ?? "";
 }
 
-  useEffect(() => {
-    if (!currentUser) return;
-
-    loadHotels();
-    loadCustomers(currentUser, selectedHotel, search);
-  }, [currentUser]);
-
-  function handleApply(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!currentUser) return;
-
-    loadCustomers(currentUser, selectedHotel, search);
+function getTierClass(tier: string | null): string {
+  switch (tier) {
+    case "platinum":
+      return "bg-blue-100 text-blue-700";
+    case "gold":
+      return "bg-amber-100 text-amber-700";
+    case "silver":
+      return "bg-slate-200 text-slate-700";
+    default:
+      return "bg-slate-100 text-slate-500";
   }
+}
 
-  if (!currentUser) {
+export default async function CustomersPage({ searchParams }: PageProps) {
+  const params = await searchParams;
+
+  const hotel = sanitizeText(params?.hotel) || "ALL";
+  const search = sanitizeText(params?.search ?? params?.q);
+
+  const { data: hotelsData } = await supabase
+    .from("hotels")
+    .select("hotel_code, hotel_name")
+    .eq("active", true)
+    .order("hotel_code", { ascending: true })
+    .returns<HotelRow[]>();
+
+  const hotelCodes = hotel === "ALL" ? null : [hotel];
+
+  const { data, error } = await supabase.rpc("search_customers_enriched", {
+    input_search: search,
+    input_hotel_codes: hotelCodes,
+    input_limit: 200,
+  });
+
+  const customers = (data ?? []) as CustomerRow[];
+
+  if (error) {
     return (
-      <main className="p-6">
-        <h1 className="text-2xl font-bold">Not logged in</h1>
-        <p>Please login to view customers.</p>
+      <main className="min-h-screen bg-slate-50 p-6 font-sans text-[13px]">
+        <h1 className="text-2xl font-bold text-red-600">
+          Failed to load customers
+        </h1>
+        <p className="mt-2 text-slate-500">{error.message}</p>
       </main>
     );
   }
 
   return (
-    <main className="p-6">
-      <h1 className="text-3xl font-bold">Customers</h1>
+    <main className="min-h-screen bg-slate-50 p-6 font-sans text-[13px]">
+      <div className="mb-5">
+        <h1 className="text-3xl font-bold tracking-tight text-slate-950">
+          Customers
+        </h1>
+      </div>
 
-      <form className="mb-4 flex items-center gap-2" onSubmit={handleApply}>
-        <label className="font-semibold">Hotel:</label>
+      <form className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center">
+        <label className="font-semibold text-slate-800">Hotel:</label>
 
         <select
-          value={selectedHotel}
-          onChange={(event) => setSelectedHotel(event.target.value)}
-          className="rounded border px-3 py-2"
+          name="hotel"
+          defaultValue={hotel}
+          className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-[13px] outline-none lg:w-[260px]"
         >
           <option value="ALL">ALL</option>
 
-          {visibleHotels.map((hotel) => (
-            <option key={hotel.hotel_code} value={hotel.hotel_code}>
-              {hotel.hotel_code} - {hotel.hotel_name}
+          {(hotelsData ?? []).map((hotelOption) => (
+            <option key={hotelOption.hotel_code} value={hotelOption.hotel_code}>
+              {hotelOption.hotel_code} - {hotelOption.hotel_name ?? ""}
             </option>
           ))}
         </select>
 
         <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          name="search"
+          defaultValue={search}
           placeholder="Search customer..."
-          className="ml-2 flex-1 rounded border px-4 py-2"
+          className="h-11 flex-1 rounded-lg border border-slate-300 bg-white px-4 text-[13px] outline-none placeholder:text-slate-400"
         />
 
-        <button type="submit" className="rounded border px-3 py-2">
+        <button
+          type="submit"
+          className="h-11 rounded-lg border border-slate-300 bg-white px-5 font-medium hover:bg-slate-100"
+        >
           Apply
         </button>
       </form>
 
-      {errorMessage ? (
-        <p className="mb-3 text-red-600">{errorMessage}</p>
-      ) : null}
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+        <table className="w-full min-w-[1120px] table-fixed border-collapse text-[13px]">
+          <thead className="bg-slate-100">
+            <tr className="text-left font-semibold text-slate-700">
+              <th className="w-[180px] whitespace-nowrap px-5 py-4">
+                CRM ID
+              </th>
+              <th className="w-[260px] px-4 py-4">Customer</th>
+              <th className="w-[140px] px-4 py-4">Phone</th>
+              <th className="w-[210px] px-4 py-4">Email</th>
+              <th className="w-[105px] px-4 py-4 text-right">
+                Total Stays
+              </th>
+              <th className="w-[115px] px-4 py-4 text-right">
+                Loyalty Stays
+              </th>
+              <th className="w-[105px] px-4 py-4">Tier</th>
+              <th className="w-[125px] px-4 py-4">Last Stay</th>
+            </tr>
+          </thead>
 
-      {loading ? (
-        <p>Loading customers...</p>
-      ) : (
-        <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full min-w-[1200px] border-collapse text-sm">
-            <thead className="bg-slate-100">
-              <tr>
-                <th className="px-4 py-3 text-left">CRM ID</th>
-                <th className="px-4 py-3 text-left">Customer</th>
-                <th className="px-4 py-3 text-left">Phone</th>
-                <th className="px-4 py-3 text-left">Email</th>
-                <th className="px-4 py-3 text-left">Total Stays</th>
-                <th className="px-4 py-3 text-left">Loyalty Stays</th>
-                <th className="px-4 py-3 text-left">Tier</th>
-                <th className="px-4 py-3 text-left">Last Stay</th>
+          <tbody>
+            {customers.map((customer) => (
+              <tr
+                key={customer.customer_identity}
+                className="border-t border-slate-200 transition hover:bg-slate-50"
+              >
+                <td className="whitespace-nowrap px-5 py-4 font-bold text-slate-950">
+                  <Link
+                    href={`/customers/${customer.customer_identity}`}
+                    className="hover:text-blue-700 hover:underline"
+                  >
+                    {customer.customer_identity}
+                  </Link>
+                </td>
+
+                <td className="truncate px-4 py-4 font-medium text-slate-900">
+                  <Link
+                    href={`/customers/${customer.customer_identity}`}
+                    className="hover:text-blue-700 hover:underline"
+                  >
+                    {customer.customer_name ?? "N/A"}
+                  </Link>
+                </td>
+
+                <td className="truncate px-4 py-4 text-slate-700">
+                  {customer.phone ?? "-"}
+                </td>
+
+                <td
+                  className="truncate px-4 py-4 text-slate-600"
+                  title={customer.email ?? ""}
+                >
+                  {customer.email ?? "-"}
+                </td>
+
+                <td className="px-4 py-4 text-right font-semibold text-slate-900">
+                  {customer.total_stays ?? 0}
+                </td>
+
+                <td className="px-4 py-4 text-right font-semibold text-blue-700">
+                  {customer.loyalty_stays ?? 0}
+                </td>
+
+                <td className="px-4 py-4">
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-[12px] font-semibold ${getTierClass(
+                      customer.tier
+                    )}`}
+                  >
+                    {customer.tier ?? "new"}
+                  </span>
+                </td>
+
+                <td className="px-4 py-4 text-slate-600">
+                  {customer.last_stay ?? "-"}
+                </td>
               </tr>
-            </thead>
+            ))}
 
-            <tbody>
-              {customers.map((customer) => (
-                <tr key={customer.customer_identity} className="border-t">
-                  <td className="px-4 py-3 font-semibold">
-                    <Link href={`/customers/${customer.customer_identity}`}>
-                      {customer.customer_identity}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">{customer.customer_name ?? "-"}</td>
-                  <td className="px-4 py-3">{customer.phone ?? "-"}</td>
-                  <td className="px-4 py-3">{customer.email ?? "-"}</td>
-                  <td className="px-4 py-3">{customer.total_stays ?? 0}</td>
-                  <td className="px-4 py-3">{customer.loyalty_stays ?? 0}</td>
-                  <td className="px-4 py-3">{customer.tier ?? "-"}</td>
-                  <td className="px-4 py-3">{customer.last_stay ?? "-"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            {customers.length === 0 && (
+              <tr>
+                <td
+                  colSpan={8}
+                  className="px-4 py-10 text-center text-slate-400"
+                >
+                  No customers found
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </main>
   );
 }
