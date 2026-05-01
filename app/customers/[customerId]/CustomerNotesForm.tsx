@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Car, FileText, Pencil, X } from "lucide-react";
+import { getCurrentUser, CurrentUser } from "@/lib/currentUser";
 
 type Props = {
   customerId: string;
@@ -25,12 +26,26 @@ export default function CustomerNotesForm({
 }: Props) {
   const router = useRouter();
 
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [car, setCar] = useState(defaultCar ?? "");
   const [profile, setProfile] = useState(defaultProfile ?? "");
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    setCurrentUser(getCurrentUser());
+  }, []);
+
+  const canEditCustomerProfile = useMemo(() => {
+    return canEdit && currentUser?.can_edit_customer_profile === true;
+  }, [canEdit, currentUser]);
+
   async function handleSave() {
+    if (!canEditCustomerProfile || !currentUser?.user_id) {
+      alert("Bạn không có quyền chỉnh sửa customer profile");
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -38,6 +53,7 @@ export default function CustomerNotesForm({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "x-current-user-id": currentUser.user_id,
         },
         body: JSON.stringify({
           car,
@@ -68,7 +84,11 @@ export default function CustomerNotesForm({
   }
 
   return (
-    <div className={compact ? "space-y-4" : "rounded-2xl border bg-white p-5 shadow-sm"}>
+    <div
+      className={
+        compact ? "space-y-4" : "rounded-2xl border bg-white p-5 shadow-sm"
+      }
+    >
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-slate-950">Customer Notes</h2>
@@ -77,7 +97,7 @@ export default function CustomerNotesForm({
           </p>
         </div>
 
-        {canEdit && !isEditing && (
+        {canEditCustomerProfile && !isEditing && (
           <button
             type="button"
             onClick={() => setIsEditing(true)}
@@ -100,7 +120,8 @@ export default function CustomerNotesForm({
             <input
               value={car}
               onChange={(event) => setCar(event.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-slate-900"
+              disabled={!canEditCustomerProfile || loading}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-slate-900 disabled:bg-slate-100"
               placeholder="Ví dụ: Toyota 56N-9999"
             />
           ) : (
@@ -120,7 +141,8 @@ export default function CustomerNotesForm({
             <textarea
               value={profile}
               onChange={(event) => setProfile(event.target.value)}
-              className="min-h-[90px] w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-slate-900"
+              disabled={!canEditCustomerProfile || loading}
+              className="min-h-[90px] w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-slate-900 disabled:bg-slate-100"
               placeholder="Ví dụ: VIP, thích phòng yên tĩnh..."
             />
           ) : (
@@ -136,7 +158,7 @@ export default function CustomerNotesForm({
           <button
             type="button"
             onClick={handleSave}
-            disabled={loading}
+            disabled={!canEditCustomerProfile || loading}
             className="rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
           >
             {loading ? "Saving..." : "Save Changes"}

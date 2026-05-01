@@ -12,6 +12,11 @@ type CustomerNotesPayload = {
   customer_profile?: unknown;
 };
 
+type PermissionUser = {
+  user_id: string;
+  edit_customer_profile: boolean | null;
+};
+
 function normalizeText(value: unknown): string | null {
   if (typeof value !== "string") {
     return null;
@@ -31,6 +36,49 @@ async function parseJsonBody(request: Request): Promise<CustomerNotesPayload> {
 
 export async function POST(request: Request, context: RouteContext) {
   try {
+    const currentUserId = request.headers.get("x-current-user-id")?.trim();
+
+    if (!currentUserId) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const { data: permissionUser, error: permissionError } = await supabase
+      .from("users")
+      .select(`
+        user_id,
+        edit_customer_profile
+      `)
+      .eq("user_id", currentUserId)
+      .maybeSingle()
+      .returns<PermissionUser>();
+
+    if (permissionError) {
+      return NextResponse.json(
+        {
+          error: "Failed to check user permission",
+          details: permissionError.message,
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!permissionUser) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    if (permissionUser.edit_customer_profile !== true) {
+      return NextResponse.json(
+        { error: "Bạn không có quyền chỉnh sửa customer profile" },
+        { status: 403 }
+      );
+    }
+
     const { customerId } = await context.params;
     const normalizedCustomerId = decodeURIComponent(customerId ?? "").trim();
 
@@ -46,7 +94,7 @@ export async function POST(request: Request, context: RouteContext) {
     const car = normalizeText(body.car);
     const customerProfile = normalizeText(body.customer_profile);
 
-    const updatedBy = "system";
+    const updatedBy = permissionUser.user_id;
 
     const { error } = await supabase.from("crm_customer_notes").upsert(
       {
