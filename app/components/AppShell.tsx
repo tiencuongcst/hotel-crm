@@ -43,35 +43,35 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <aside className="w-64 border-r bg-white">
-        <div className="border-b p-5">
-          <h1 className="text-xl font-bold">
+    <div className="flex min-h-screen bg-slate-50">
+      <aside className="sticky top-0 flex h-screen w-64 flex-col border-r border-slate-200 bg-white">
+        <div className="border-b border-slate-200 px-6 py-5">
+          <h1 className="text-lg font-bold tracking-tight text-slate-950">
             {branding.app_name ?? "Hotel CRM"}
           </h1>
-          <p className="text-sm text-gray-500">
+          <p className="mt-1 text-xs text-slate-500">
             {branding.company_name ?? "Khánh Phát Investment"}
           </p>
         </div>
 
-        <nav className="space-y-1 p-4">
+        <nav className="flex-1 space-y-1 px-3 py-4">
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="block rounded-xl px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-black"
+              className="block rounded-xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-blue-50 hover:text-blue-700"
             >
               {item.label}
             </Link>
           ))}
         </nav>
 
-        <div className="border-t p-4">
+        <div className="border-t border-slate-200 p-4">
           <UserPanel />
         </div>
       </aside>
 
-      <section className="flex-1 overflow-auto">{children}</section>
+      <section className="min-w-0 flex-1 overflow-auto">{children}</section>
     </div>
   );
 }

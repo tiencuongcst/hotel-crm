@@ -1,5 +1,11 @@
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { Card } from "@/app/components/ui/Card";
+import { Button } from "@/app/components/ui/Button";
+import { Input } from "@/app/components/ui/Input";
+import { Select } from "@/app/components/ui/Select";
+import { Badge } from "@/app/components/ui/Badge";
+import { EmptyRow, Table, THead, TRow } from "@/app/components/ui/Table";
 
 type PageProps = {
   searchParams?: Promise<{
@@ -41,16 +47,16 @@ function parsePositiveInteger(value: string | undefined, fallback: number): numb
   return parsedValue;
 }
 
-function getTierClass(tier: string | null): string {
+function getTierVariant(tier: string | null) {
   switch (tier) {
     case "platinum":
-      return "bg-blue-100 text-blue-700";
+      return "platinum";
     case "gold":
-      return "bg-amber-100 text-amber-700";
+      return "gold";
     case "silver":
-      return "bg-slate-200 text-slate-700";
+      return "silver";
     default:
-      return "bg-slate-100 text-slate-500";
+      return "default";
   }
 }
 
@@ -105,7 +111,7 @@ export default async function CustomersPage({ searchParams }: PageProps) {
 
   if (error) {
     return (
-      <main className="min-h-screen bg-slate-50 p-6 font-sans text-[13px]">
+      <main className="min-h-screen bg-slate-50 p-6">
         <h1 className="text-2xl font-bold text-red-600">
           Failed to load customers
         </h1>
@@ -115,177 +121,166 @@ export default async function CustomersPage({ searchParams }: PageProps) {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 p-6 font-sans text-[13px]">
-      <div className="mb-5">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-950">
-          Customers
-        </h1>
-      </div>
+    <main className="min-h-screen bg-slate-50 px-6 py-8">
+      <div className="mx-auto max-w-[1600px] space-y-6">
+        <header>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-950">
+            Customers
+          </h1>
+        </header>
 
-      <form className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center">
-        <label className="font-semibold text-slate-800">Hotel:</label>
+        <form className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <label className="text-sm font-semibold text-slate-700">Hotel:</label>
 
-        <select
-          name="hotel"
-          defaultValue={hotel}
-          className="h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-[13px] outline-none lg:w-[260px]"
-        >
-          <option value="ALL">ALL</option>
+          <Select name="hotel" defaultValue={hotel} className="w-full lg:w-[260px]">
+            <option value="ALL">ALL</option>
 
-          {(hotelsData ?? []).map((hotelOption) => (
-            <option key={hotelOption.hotel_code} value={hotelOption.hotel_code}>
-              {hotelOption.hotel_code} - {hotelOption.hotel_name ?? ""}
-            </option>
-          ))}
-        </select>
-
-        <input
-          name="search"
-          defaultValue={search}
-          placeholder="Search customer..."
-          className="h-11 flex-1 rounded-lg border border-slate-300 bg-white px-4 text-[13px] outline-none placeholder:text-slate-400"
-        />
-
-        <button
-          type="submit"
-          className="h-11 rounded-lg border border-slate-300 bg-white px-5 font-medium hover:bg-slate-100"
-        >
-          Apply
-        </button>
-      </form>
-
-      <div className="mb-3 flex items-center justify-between text-sm text-slate-500">
-        <div>
-          Showing {customers.length === 0 ? 0 : offset + 1} -{" "}
-          {offset + customers.length} customers
-        </div>
-
-        <div>
-          Page {page}
-          {hasNextPage ? " / more" : ""}
-        </div>
-      </div>
-
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full min-w-[1120px] table-fixed border-collapse text-[13px]">
-          <thead className="bg-slate-100">
-            <tr className="text-left font-semibold text-slate-700">
-              <th className="w-[180px] whitespace-nowrap px-5 py-4">CRM ID</th>
-              <th className="w-[260px] px-4 py-4">Customer</th>
-              <th className="w-[140px] px-4 py-4">Phone</th>
-              <th className="w-[210px] px-4 py-4">Email</th>
-              <th className="w-[105px] px-4 py-4 text-right">Total Stays</th>
-              <th className="w-[115px] px-4 py-4 text-right">
-                Loyalty Stays
-              </th>
-              <th className="w-[105px] px-4 py-4">Tier</th>
-              <th className="w-[125px] px-4 py-4">Last Stay</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {customers.map((customer) => (
-              <tr
-                key={customer.customer_identity}
-                className="border-t border-slate-200 transition hover:bg-slate-50"
-              >
-                <td className="whitespace-nowrap px-5 py-4 font-bold text-slate-950">
-                  <Link
-                    href={`/customers/${customer.customer_identity}`}
-                    className="hover:text-blue-700 hover:underline"
-                  >
-                    {customer.customer_identity}
-                  </Link>
-                </td>
-
-                <td className="truncate px-4 py-4 font-medium text-slate-900">
-                  <Link
-                    href={`/customers/${customer.customer_identity}`}
-                    className="hover:text-blue-700 hover:underline"
-                  >
-                    {customer.customer_name ?? "N/A"}
-                  </Link>
-                </td>
-
-                <td className="truncate px-4 py-4 text-slate-700">
-                  {customer.phone ?? "-"}
-                </td>
-
-                <td
-                  className="truncate px-4 py-4 text-slate-600"
-                  title={customer.email ?? ""}
-                >
-                  {customer.email ?? "-"}
-                </td>
-
-                <td className="px-4 py-4 text-right font-semibold text-slate-900">
-                  {customer.total_stays ?? 0}
-                </td>
-
-                <td className="px-4 py-4 text-right font-semibold text-blue-700">
-                  {customer.loyalty_stays ?? 0}
-                </td>
-
-                <td className="px-4 py-4">
-                  <span
-                    className={`rounded-full px-2.5 py-1 text-[12px] font-semibold ${getTierClass(
-                      customer.tier
-                    )}`}
-                  >
-                    {customer.tier ?? "new"}
-                  </span>
-                </td>
-
-                <td className="px-4 py-4 text-slate-600">
-                  {customer.last_stay ?? "-"}
-                </td>
-              </tr>
+            {(hotelsData ?? []).map((hotelOption) => (
+              <option key={hotelOption.hotel_code} value={hotelOption.hotel_code}>
+                {hotelOption.hotel_code} - {hotelOption.hotel_name ?? ""}
+              </option>
             ))}
+          </Select>
 
-            {customers.length === 0 && (
+          <Input
+            name="search"
+            defaultValue={search}
+            placeholder="Search customer..."
+            className="flex-1"
+          />
+
+          <Button type="submit">Apply</Button>
+        </form>
+
+        <div className="flex items-center justify-between text-sm text-slate-500">
+          <div>
+            Showing {customers.length === 0 ? 0 : offset + 1} -{" "}
+            {offset + customers.length} customers
+          </div>
+
+          <div>
+            Page {page}
+            {hasNextPage ? " / more" : ""}
+          </div>
+        </div>
+
+        <Card>
+          <Table minWidth="1120px">
+            <THead>
               <tr>
-                <td
-                  colSpan={8}
-                  className="px-4 py-10 text-center text-slate-400"
-                >
-                  No customers found
-                </td>
+                <th className="w-[180px] whitespace-nowrap px-5 py-4 text-left">
+                  CRM ID
+                </th>
+                <th className="w-[260px] px-4 py-4 text-left">Customer</th>
+                <th className="w-[140px] px-4 py-4 text-left">Phone</th>
+                <th className="w-[210px] px-4 py-4 text-left">Email</th>
+                <th className="w-[105px] px-4 py-4 text-right">
+                  Total Stays
+                </th>
+                <th className="w-[115px] px-4 py-4 text-right">
+                  Loyalty Stays
+                </th>
+                <th className="w-[105px] px-4 py-4 text-left">Tier</th>
+                <th className="w-[125px] px-4 py-4 text-left">Last Stay</th>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </THead>
 
-      <div className="mt-4 flex items-center justify-end gap-3">
-        <Link
-          href={buildCustomersPageUrl({
-            page: Math.max(1, page - 1),
-            search,
-            hotel,
-          })}
-          className={`rounded-lg border border-slate-300 bg-white px-4 py-2 font-medium hover:bg-slate-100 ${
-            !hasPreviousPage ? "pointer-events-none opacity-50" : ""
-          }`}
-        >
-          Prev
-        </Link>
+            <tbody>
+              {customers.map((customer) => (
+                <TRow key={customer.customer_identity}>
+                  <td className="whitespace-nowrap px-5 py-4 font-bold text-slate-950">
+                    <Link
+                      href={`/customers/${customer.customer_identity}`}
+                      className="hover:text-blue-700 hover:underline"
+                    >
+                      {customer.customer_identity}
+                    </Link>
+                  </td>
 
-        <span className="text-sm font-medium text-slate-600">
-          Page {page}
-        </span>
+                  <td className="truncate px-4 py-4 font-medium text-slate-900">
+                    <Link
+                      href={`/customers/${customer.customer_identity}`}
+                      className="hover:text-blue-700 hover:underline"
+                    >
+                      {customer.customer_name ?? "N/A"}
+                    </Link>
+                  </td>
 
-        <Link
-          href={buildCustomersPageUrl({
-            page: page + 1,
-            search,
-            hotel,
-          })}
-          className={`rounded-lg border border-slate-300 bg-white px-4 py-2 font-medium hover:bg-slate-100 ${
-            !hasNextPage ? "pointer-events-none opacity-50" : ""
-          }`}
-        >
-          Next
-        </Link>
+                  <td className="truncate px-4 py-4 text-slate-700">
+                    {customer.phone ? (
+                      customer.phone
+                    ) : (
+                      <span className="text-slate-400">N/A</span>
+                    )}
+                  </td>
+
+                  <td
+                    className="truncate px-4 py-4 text-slate-600"
+                    title={customer.email ?? ""}
+                  >
+                    {customer.email ? (
+                      customer.email
+                    ) : (
+                      <span className="text-slate-400">N/A</span>
+                    )}
+                  </td>
+
+                  <td className="px-4 py-4 text-right font-semibold text-slate-900">
+                    {customer.total_stays ?? 0}
+                  </td>
+
+                  <td className="px-4 py-4 text-right font-semibold text-blue-700">
+                    {customer.loyalty_stays ?? 0}
+                  </td>
+
+                  <td className="px-4 py-4">
+                    <Badge variant={getTierVariant(customer.tier)}>
+                      {customer.tier ?? "new"}
+                    </Badge>
+                  </td>
+
+                  <td className="px-4 py-4 text-slate-600">
+                    {customer.last_stay ?? "-"}
+                  </td>
+                </TRow>
+              ))}
+
+              {customers.length === 0 && (
+                <EmptyRow colSpan={8}>No customers found</EmptyRow>
+              )}
+            </tbody>
+          </Table>
+        </Card>
+
+        <div className="flex items-center justify-end gap-3">
+          <Link
+            href={buildCustomersPageUrl({
+              page: Math.max(1, page - 1),
+              search,
+              hotel,
+            })}
+            className={`rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-100 ${
+              !hasPreviousPage ? "pointer-events-none opacity-50" : ""
+            }`}
+          >
+            Prev
+          </Link>
+
+          <span className="text-sm font-medium text-slate-600">Page {page}</span>
+
+          <Link
+            href={buildCustomersPageUrl({
+              page: page + 1,
+              search,
+              hotel,
+            })}
+            className={`rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-100 ${
+              !hasNextPage ? "pointer-events-none opacity-50" : ""
+            }`}
+          >
+            Next
+          </Link>
+        </div>
       </div>
     </main>
   );
