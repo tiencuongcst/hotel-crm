@@ -1,5 +1,8 @@
-﻿import { NextResponse } from "next/server";
+﻿import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+
+const USER_COOKIE_KEY = "hotel_crm_current_user_id";
 
 type RouteContext = {
   params: Promise<{
@@ -25,6 +28,8 @@ type Customer = {
   hotel_codes: string[] | null;
   source_customer_ids: string[] | null;
   updated_at: string | null;
+  source_car: string | null;
+  source_customer_profile: string | null;
 };
 
 type CustomerStay = {
@@ -48,7 +53,60 @@ type CustomerNote = {
   customer_profile: string | null;
 };
 
-export async function GET(_request: Request, context: RouteContext) {
+type UserPermission = {
+  user_id: string;
+  hotel: string | null;
+  status: string | null;
+  edit_customer_profile: boolean | string | null;
+};
+
+function parseHotelCodes(value: string | null): string[] | null {
+  if (!value || value.trim().toUpperCase() === "ALL") {
+    return null;
+  }
+
+  const hotelCodes = value
+    .split(",")
+    .map((hotelCode) => hotelCode.trim().toUpperCase())
+    .filter(Boolean);
+
+  return hotelCodes.length > 0 ? hotelCodes : [];
+}
+
+async function getCurrentUserId(request: Request): Promise<string | null> {
+  const cookieStore = await cookies();
+
+  return (
+    cookieStore.get(USER_COOKIE_KEY)?.value?.trim() ||
+    request.headers.get("x-current-user-id")?.trim() ||
+    request.headers.get("x-user-id")?.trim() ||
+    null
+  );
+}
+
+async function getUserPermission(userId: string): Promise<{
+  user: UserPermission | null;
+  error: string | null;
+}> {
+  const { data, error } = await supabase
+    .from("users")
+    .select("user_id, hotel, status, edit_customer_profile")
+    .eq("user_id", userId)
+    .maybeSingle()
+    .returns<UserPermission>();
+
+  if (error) {
+    return { user: null, error: error.message };
+  }
+
+  if (!data || data.status !== "active") {
+    return { user: null, error: "User not found or inactive" };
+  }
+
+  return { user: data, error: null };
+}
+
+export async function GET(request: Request, context: RouteContext) {
   try {
     const { customerId } = await context.params;
     const normalizedCustomerId = decodeURIComponent(customerId ?? "").trim();
@@ -60,8 +118,26 @@ export async function GET(_request: Request, context: RouteContext) {
       );
     }
 
+    const currentUserId = await getCurrentUserId(request);
+
+    if (!currentUserId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { user, error: permissionError } =
+      await getUserPermission(currentUserId);
+
+    if (permissionError || !user) {
+      return NextResponse.json(
+        { error: permissionError ?? "Forbidden" },
+        { status: 403 }
+      );
+    }
+
+    const allowedHotels = parseHotelCodes(user.hotel);
+
     const { data: customer, error: customerError } = await supabase
-      .from("v_crm_customers")
+      .from("v_crm_customers_enriched")
       .select(`
         customer_identity,
         identity_key,
@@ -79,7 +155,9 @@ export async function GET(_request: Request, context: RouteContext) {
         last_stay,
         hotel_codes,
         source_customer_ids,
-        updated_at
+        updated_at,
+        source_car,
+        source_customer_profile
       `)
       .eq("customer_identity", normalizedCustomerId)
       .maybeSingle()
@@ -116,7 +194,7 @@ export async function GET(_request: Request, context: RouteContext) {
       );
     }
 
-    const { data: stays, error: staysError } = await supabase
+    let staysQuery = supabase
       .from("crm_customer_stays_snapshot")
       .select(`
         stay_id,
@@ -135,14 +213,24 @@ export async function GET(_request: Request, context: RouteContext) {
       `)
       .eq("customer_identity", normalizedCustomerId)
       .order("check_in_date", { ascending: false })
-      .limit(200)
-      .returns<CustomerStay[]>();
+      .limit(200);
+
+    if (allowedHotels !== null) {
+      staysQuery = staysQuery.in("hotel_code", allowedHotels);
+    }
+
+    const { data: stays, error: staysError } =
+      await staysQuery.returns<CustomerStay[]>();
 
     if (staysError) {
       return NextResponse.json(
         { error: "Failed to load customer stays", details: staysError.message },
         { status: 500 }
       );
+    }
+
+    if (allowedHotels !== null && (!stays || stays.length === 0)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const bookingCodes = Array.from(
@@ -158,9 +246,15 @@ export async function GET(_request: Request, context: RouteContext) {
         ...customer,
         car: customerNote?.car ?? null,
         customer_profile: customerNote?.customer_profile ?? null,
+        source_car: customer.source_car ?? null,
+        source_customer_profile: customer.source_customer_profile ?? null,
       },
       bookingCodes,
       stays: stays ?? [],
+      user: {
+        hotel: user.hotel,
+        edit_customer_profile: user.edit_customer_profile,
+      },
     });
   } catch (error) {
     return NextResponse.json(

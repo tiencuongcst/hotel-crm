@@ -4,6 +4,14 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { saveCurrentUser } from "@/lib/currentUser";
 
+const USER_COOKIE_KEY = "hotel_crm_current_user_id";
+
+function setUserCookie(userId: string) {
+  document.cookie = `${USER_COOKIE_KEY}=${encodeURIComponent(
+    userId
+  )}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+}
+
 export default function LoginPage() {
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
@@ -11,28 +19,38 @@ export default function LoginPage() {
   const [error, setError] = useState("");
 
   async function handleLogin() {
+    const normalizedUserId = userId.trim();
+
+    if (!normalizedUserId || !password) {
+      setError("Vui lòng nhập user và password");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
-    // 1. Check password từ table users
     const { data: rawUser, error: rawError } = await supabase
       .from("users")
-      .select("user_id, password")
-      .eq("user_id", userId)
-      .single();
+      .select("user_id, password, status")
+      .eq("user_id", normalizedUserId)
+      .maybeSingle();
 
-    if (rawError || !rawUser || rawUser.password !== password) {
+    if (
+      rawError ||
+      !rawUser ||
+      rawUser.password !== password ||
+      rawUser.status !== "active"
+    ) {
       setError("Sai user hoặc password");
       setLoading(false);
       return;
     }
 
-    // 2. Lấy permission từ v_users
     const { data: user, error: userError } = await supabase
       .from("v_users")
       .select("*")
-      .eq("user_id", userId)
-      .single();
+      .eq("user_id", normalizedUserId)
+      .maybeSingle();
 
     if (userError || !user) {
       setError("User không active hoặc không có quyền");
@@ -40,10 +58,9 @@ export default function LoginPage() {
       return;
     }
 
-    // 3. Lưu vào localStorage
     saveCurrentUser(user);
+    setUserCookie(user.user_id);
 
-    // 4. Redirect
     window.location.href = "/dashboard";
   }
 
@@ -55,7 +72,7 @@ export default function LoginPage() {
         <input
           placeholder="User ID"
           value={userId}
-          onChange={(e) => setUserId(e.target.value)}
+          onChange={(event) => setUserId(event.target.value)}
           className="mb-3 w-full rounded-lg border px-3 py-2"
         />
 
@@ -63,18 +80,20 @@ export default function LoginPage() {
           type="password"
           placeholder="Password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(event) => setPassword(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") handleLogin();
+          }}
           className="mb-3 w-full rounded-lg border px-3 py-2"
         />
 
-        {error && (
-          <div className="mb-3 text-sm text-red-600">{error}</div>
-        )}
+        {error && <div className="mb-3 text-sm text-red-600">{error}</div>}
 
         <button
+          type="button"
           onClick={handleLogin}
           disabled={loading}
-          className="w-full rounded-lg bg-black px-3 py-2 text-white hover:bg-gray-800"
+          className="w-full rounded-lg bg-black px-3 py-2 text-white hover:bg-gray-800 disabled:opacity-50"
         >
           {loading ? "Loading..." : "Login"}
         </button>

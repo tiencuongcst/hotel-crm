@@ -44,12 +44,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-slate-50">
-      <aside className="sticky top-0 flex h-screen w-64 flex-col border-r border-slate-200 bg-white">
+      <aside className="sticky top-0 flex h-screen w-64 flex-col border-r border-slate-200 bg-white text-black">
         <div className="border-b border-slate-200 px-6 py-5">
-          <h1 className="text-lg font-bold tracking-tight text-slate-950">
+          <h1 className="text-lg font-bold tracking-tight text-black">
             {branding.app_name ?? "Hotel CRM"}
           </h1>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-black">
             {branding.company_name ?? "Khánh Phát Investment"}
           </p>
         </div>
@@ -59,14 +59,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <Link
               key={item.href}
               href={item.href}
-              className="block rounded-xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-blue-50 hover:text-blue-700"
+              className="block rounded-xl px-4 py-3 text-sm font-medium text-black transition hover:bg-blue-50 hover:text-blue-700"
             >
               {item.label}
             </Link>
           ))}
         </nav>
 
-        <div className="border-t border-slate-200 p-4">
+        <div className="border-t border-slate-200 p-4 text-black">
           <UserPanel />
         </div>
       </aside>

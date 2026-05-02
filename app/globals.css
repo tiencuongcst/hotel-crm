@@ -20,3 +20,47 @@ body {
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
 }
+
+/* CRM table standard */
+table {
+  font-size: 13px;
+  color: #000;
+}
+
+table thead th {
+  height: 35px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #000 !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+}
+
+table tbody td {
+  height: 35px !important;
+  min-height: 35px !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+  font-size: 13px !important;
+  line-height: 17px !important;
+  color: #000;
+  vertical-align: middle !important;
+}
+
+/* Keep CRM ID/link blue */
+table tbody td a,
+table tbody td .text-blue-700,
+table tbody td .text-blue-600 {
+  color: #1d4ed8 !important;
+}
+
+/* Keep badges unchanged */
+table .bg-indigo-600,
+table .bg-amber-500,
+table .bg-slate-400,
+table .bg-emerald-500,
+table .bg-red-500 {
+  color: #fff !important;
+}

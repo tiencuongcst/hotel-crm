@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { supabase } from "@/lib/supabase";
 
 type PageProps = {
@@ -61,7 +62,6 @@ export default async function VisitFrequencyPage({ searchParams }: PageProps) {
   const page = parsePositiveInteger(params?.page, 1);
   const pageSize = 50;
   const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
 
   const { data: hotels } = await supabase
     .from("hotels")
@@ -70,45 +70,44 @@ export default async function VisitFrequencyPage({ searchParams }: PageProps) {
     .order("hotel_code", { ascending: true })
     .returns<HotelRow[]>();
 
-  let query = supabase
-    .from("v_loyal_customers")
-    .select(
-      `
-      customer_identity,
-      customer_name,
-      phone,
-      loyalty_stays,
-      tier,
-      first_stay,
-      last_stay,
-      hotel_codes
-    `
-    )
-    .gte("loyalty_stays", minStays)
-    .order("loyalty_stays", { ascending: true })
-    .order("last_stay", { ascending: false })
-    .range(from, to);
+  const headersList = await headers();
+  const host = headersList.get("host");
+  const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
+  const cookieHeader = headersList.get("cookie") ?? "";
 
-  if (hotel !== "ALL") {
-    query = query.contains("hotel_codes", [hotel]);
-  }
+  const apiUrl = new URL(`${protocol}://${host}/api/visitFrequency`);
+  apiUrl.searchParams.set("hotel", hotel);
+  apiUrl.searchParams.set("stays", String(minStays));
+  apiUrl.searchParams.set("page", String(page));
+  apiUrl.searchParams.set("limit", String(pageSize));
 
-  const { data, error } = await query;
-  const customers = (data ?? []) as VisitFrequencyCustomer[];
+  const res = await fetch(apiUrl.toString(), {
+    cache: "no-store",
+    headers: {
+      cookie: cookieHeader,
+    },
+  });
 
-  const hasPreviousPage = page > 1;
-  const hasNextPage = customers.length === pageSize;
+  if (!res.ok) {
+    const result = await res.json().catch(() => null);
 
-  if (error) {
     return (
       <main className="p-6">
         <h1 className="text-2xl font-bold text-red-600">
           Failed to load Visit Frequency
         </h1>
-        <p className="mt-2 text-slate-500">{error.message}</p>
+        <p className="mt-2 text-slate-500">
+          {result?.details ?? result?.error ?? "Unknown error"}
+        </p>
       </main>
     );
   }
+
+  const result = await res.json();
+
+  const customers = (result.customers ?? []) as VisitFrequencyCustomer[];
+  const hasPreviousPage = Boolean(result.pagination?.hasPreviousPage);
+  const hasNextPage = Boolean(result.pagination?.hasNextPage);
 
   return (
     <main className="p-6">

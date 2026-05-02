@@ -9,6 +9,8 @@ type Props = {
   customerId: string;
   defaultCar?: string | null;
   defaultProfile?: string | null;
+  sourceCar?: string | null;
+  sourceProfile?: string | null;
   canEdit: boolean;
   compact?: boolean;
 };
@@ -17,10 +19,26 @@ function EmptyText() {
   return <span className="text-slate-400">Chưa có thông tin</span>;
 }
 
+function SourceBlock({ value }: { value?: string | null }) {
+  return (
+    <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+        Source Info
+      </div>
+
+      <div className="whitespace-pre-line text-sm font-medium text-slate-700">
+        {value ? value : <EmptyText />}
+      </div>
+    </div>
+  );
+}
+
 export default function CustomerNotesForm({
   customerId,
   defaultCar,
   defaultProfile,
+  sourceCar,
+  sourceProfile,
   canEdit,
   compact = false,
 }: Props) {
@@ -35,6 +53,11 @@ export default function CustomerNotesForm({
   useEffect(() => {
     setCurrentUser(getCurrentUser());
   }, []);
+
+  useEffect(() => {
+    setCar(defaultCar ?? "");
+    setProfile(defaultProfile ?? "");
+  }, [defaultCar, defaultProfile]);
 
   const canEditCustomerProfile = useMemo(() => {
     return canEdit && currentUser?.can_edit_customer_profile === true;
@@ -93,7 +116,7 @@ export default function CustomerNotesForm({
         <div>
           <h2 className="text-lg font-bold text-slate-950">Customer Notes</h2>
           <p className="text-sm text-slate-500">
-            Car information and customer profile notes
+            Source info from bookings + manual CRM notes
           </p>
         </div>
 
@@ -111,9 +134,15 @@ export default function CustomerNotesForm({
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <div className="mb-2 flex items-center gap-2 text-sm text-slate-500">
+          <div className="mb-3 flex items-center gap-2 text-sm text-slate-500">
             <Car size={16} className="text-slate-400" />
             <span>Car</span>
+          </div>
+
+          <SourceBlock value={sourceCar} />
+
+          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Manual CRM Note
           </div>
 
           {isEditing ? (
@@ -132,9 +161,15 @@ export default function CustomerNotesForm({
         </div>
 
         <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <div className="mb-2 flex items-center gap-2 text-sm text-slate-500">
+          <div className="mb-3 flex items-center gap-2 text-sm text-slate-500">
             <FileText size={16} className="text-slate-400" />
             <span>Customer Profile</span>
+          </div>
+
+          <SourceBlock value={sourceProfile} />
+
+          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Manual CRM Note
           </div>
 
           {isEditing ? (

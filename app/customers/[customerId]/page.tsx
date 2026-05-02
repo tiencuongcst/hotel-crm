@@ -2,7 +2,6 @@
 import { notFound } from "next/navigation";
 import {
   CalendarDays,
-  Car,
   Hotel,
   Mail,
   Phone,
@@ -25,6 +24,18 @@ type Stay = {
   check_in_date: string | null;
   check_out_date: string | null;
 };
+
+type CurrentUser = {
+  hotel: string | null;
+  edit_customer_profile: boolean | string | null;
+};
+
+function canEditCustomerProfile(user: CurrentUser | null | undefined) {
+  return (
+    user?.edit_customer_profile === true ||
+    String(user?.edit_customer_profile).trim().toUpperCase() === "TRUE"
+  );
+}
 
 function formatDate(date: string | null) {
   if (!date) return "N/A";
@@ -90,9 +101,13 @@ export default async function CustomerDetailPage({ params }: PageProps) {
   const headersList = await headers();
   const host = headersList.get("host");
   const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
+  const cookieHeader = headersList.get("cookie") ?? "";
 
   const res = await fetch(`${protocol}://${host}/api/customers/${customerId}`, {
     cache: "no-store",
+    headers: {
+      cookie: cookieHeader,
+    },
   });
 
   if (!res.ok) return notFound();
@@ -101,12 +116,11 @@ export default async function CustomerDetailPage({ params }: PageProps) {
 
   const customer = result.customer;
   const stays: Stay[] = result.stays ?? [];
+  const user: CurrentUser | null = result.user ?? null;
 
   if (!customer) return notFound();
 
-  const user = {
-    edit_customer_profile: true,
-  };
+  const canEdit = canEditCustomerProfile(user);
 
   const sortedStays = [...stays].sort(
     (a, b) =>
@@ -201,7 +215,7 @@ export default async function CustomerDetailPage({ params }: PageProps) {
               customerId={customer.customer_identity}
               defaultCar={customer.car ?? null}
               defaultProfile={customer.customer_profile ?? null}
-              canEdit={user.edit_customer_profile}
+              canEdit={canEdit}
               compact
             />
           </div>
