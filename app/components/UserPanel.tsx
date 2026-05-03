@@ -1,18 +1,33 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { clearCurrentUser, getCurrentUser, CurrentUser } from "@/lib/currentUser";
+import { useRouter } from "next/navigation";
+import {
+  clearCurrentUser,
+  getCurrentUser,
+  CurrentUser,
+} from "@/lib/currentUser";
+
+const COOKIE_KEY = "hotel_crm_current_user_id";
 
 export default function UserPanel() {
   const [user, setUser] = useState<CurrentUser | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     setUser(getCurrentUser());
   }, []);
 
   function handleLogout() {
+    // clear local storage / memory
     clearCurrentUser();
-    window.location.href = "/login";
+
+    // ❗ clear cookie (QUAN TRỌNG)
+    document.cookie = `${COOKIE_KEY}=; path=/; max-age=0; SameSite=Lax`;
+
+    // redirect + clear cache
+    router.replace("/login");
+    router.refresh();
   }
 
   if (!user) {
@@ -29,9 +44,11 @@ export default function UserPanel() {
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
       <div className="font-bold text-slate-950">{user.user_name}</div>
+
       <div className="mt-1 text-xs text-slate-500">
         Hotel: {user.is_admin ? "ALL" : user.hotel_codes?.join(", ")}
       </div>
+
       <div className="mt-1 text-xs text-slate-500">
         Edit profile: {user.can_edit_customer_profile ? "Yes" : "No"}
       </div>

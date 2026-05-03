@@ -2,9 +2,6 @@
 	"folders": [
 		{
 			"path": "."
-		},
-		{
-			"path": "../hotel-crm-review"
 		}
 	],
 	"settings": {}
