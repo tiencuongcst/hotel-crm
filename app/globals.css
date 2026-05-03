@@ -27,15 +27,17 @@ table {
   color: #000;
 }
 
+table thead {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 100 !important;
+}
+
 table thead th {
-  height: 35px !important;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  font-size: 13px !important;
-  font-weight: 700 !important;
-  color: #000 !important;
-  text-align: left !important;
-  vertical-align: middle !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 101 !important;
+  background: #f1f5f9 !important;
 }
 
 table tbody td {
