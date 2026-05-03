@@ -5,7 +5,7 @@ type TableProps = {
 
 export function Table({ children, minWidth = "1000px" }: TableProps) {
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
       <table
         className="
           w-full border-collapse text-[13px] text-black
@@ -13,16 +13,22 @@ export function Table({ children, minWidth = "1000px" }: TableProps) {
           [&_thead_th]:h-[35px]
           [&_thead_th]:px-4
           [&_thead_th]:py-0
-          [&_thead_th]:text-center
+          [&_thead_th]:!text-left
           [&_thead_th]:align-middle
           [&_thead_th]:text-[13px]
           [&_thead_th]:font-bold
           [&_thead_th]:text-black
 
+          [&_tbody_tr]:border-t
+          [&_tbody_tr]:border-slate-200
+          [&_tbody_tr]:transition-colors
+          [&_tbody_tr:hover]:bg-slate-50
+
           [&_tbody_td]:h-[35px]
           [&_tbody_td]:px-4
           [&_tbody_td]:py-2
           [&_tbody_td]:align-middle
+          [&_tbody_td]:!text-left
           [&_tbody_td]:text-[13px]
           [&_tbody_td]:leading-[17px]
           [&_tbody_td]:text-black
@@ -38,15 +44,11 @@ export function Table({ children, minWidth = "1000px" }: TableProps) {
 }
 
 export function THead({ children }: { children: React.ReactNode }) {
-  return <thead className="bg-slate-50">{children}</thead>;
+  return <thead className="bg-slate-100">{children}</thead>;
 }
 
 export function TRow({ children }: { children: React.ReactNode }) {
-  return (
-    <tr className="border-t border-slate-100 transition-colors hover:bg-slate-50">
-      {children}
-    </tr>
-  );
+  return <tr>{children}</tr>;
 }
 
 export function EmptyRow({

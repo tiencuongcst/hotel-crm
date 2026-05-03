@@ -7,6 +7,7 @@ import { Input } from "@/app/components/ui/Input";
 import { Select } from "@/app/components/ui/Select";
 import { Badge } from "@/app/components/ui/Badge";
 import { EmptyRow, Table, THead, TRow } from "@/app/components/ui/Table";
+import PageTitle from "@/app/components/ui/PageTitle";
 
 const USER_COOKIE_KEY = "hotel_crm_current_user_id";
 
@@ -162,12 +163,10 @@ export default async function CustomersPage({ searchParams }: PageProps) {
 
   if (allowedHotels !== null && hotelCodes?.length === 0) {
     return (
-      <main className="min-h-screen bg-slate-50 px-6 py-8">
+      <main className="min-h-screen bg-slate-50 px-6 pt-4 pb-8">
         <div className="mx-auto max-w-[1600px] space-y-6">
-          <header>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-950">
-              Customers
-            </h1>
+          <header className="mb-4 flex items-center justify-between">
+            <PageTitle>Customers</PageTitle>
           </header>
 
           <Card>
@@ -220,10 +219,8 @@ export default async function CustomersPage({ searchParams }: PageProps) {
   return (
     <main className="min-h-screen bg-slate-50 px-6 py-8">
       <div className="mx-auto max-w-[1600px] space-y-6">
-        <header>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-950">
-            Customers
-          </h1>
+        <header className="mb-4 flex items-center justify-between">
+          <PageTitle>Customers</PageTitle>
         </header>
 
         <form className="flex flex-col gap-3 lg:flex-row lg:items-center">
