@@ -45,7 +45,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-slate-50">
-      <aside className="sticky top-0 flex h-screen w-64 flex-col border-r border-slate-200 bg-white text-black">
+      <aside className="sticky top-0 flex h-screen w-[160px] flex-col border-r border-slate-200 bg-white text-black">
         <div className="border-b border-slate-200 px-6 py-5">
           <h1 className="text-lg font-bold tracking-tight text-black">
             {branding.app_name ?? "Hotel CRM"}
