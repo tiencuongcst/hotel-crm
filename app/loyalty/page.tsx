@@ -3,12 +3,22 @@ import { supabase } from "@/lib/supabase";
 type PageProps = {
   searchParams?: Promise<{
     hotel?: string;
+    search?: string;
   }>;
 };
+
+function sanitizeText(value: string | undefined): string {
+  return value?.trim() ?? "";
+}
+
+function escapeSearchValue(value: string): string {
+  return value.replaceAll("%", "\\%").replaceAll("_", "\\_");
+}
 
 export default async function LoyaltyPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const hotel = params?.hotel ?? "ALL";
+  const search = sanitizeText(params?.search);
 
   const { data: hotels } = await supabase
     .from("hotels")
@@ -35,6 +45,21 @@ export default async function LoyaltyPage({ searchParams }: PageProps) {
     query = query.eq("hotel_code", hotel);
   }
 
+  if (search) {
+    const safeSearch = escapeSearchValue(search);
+
+    query = query.or(
+      [
+        `customer_identity.ilike.%${safeSearch}%`,
+        `crm_customer_name.ilike.%${safeSearch}%`,
+        `crm_phone.ilike.%${safeSearch}%`,
+        `hotel_code.ilike.%${safeSearch}%`,
+        `discount_display.ilike.%${safeSearch}%`,
+        `note.ilike.%${safeSearch}%`,
+      ].join(",")
+    );
+  }
+
   const { data, error } = await query;
   const loyalty = error ? [] : data ?? [];
 
@@ -42,7 +67,7 @@ export default async function LoyaltyPage({ searchParams }: PageProps) {
     <main className="p-6">
       <h1 className="text-3xl font-bold">Loyalty</h1>
 
-      <form className="mb-4 flex items-center gap-2">
+      <form className="mb-4 flex flex-wrap items-center gap-2">
         <label className="font-semibold">Hotel:</label>
 
         <select
@@ -58,6 +83,13 @@ export default async function LoyaltyPage({ searchParams }: PageProps) {
             </option>
           ))}
         </select>
+
+        <input
+          name="search"
+          defaultValue={search}
+          placeholder="Search CRM ID, customer, phone, hotel, discount, note..."
+          className="min-w-[320px] rounded border px-3 py-2"
+        />
 
         <button type="submit" className="rounded border px-3 py-2">
           Apply
