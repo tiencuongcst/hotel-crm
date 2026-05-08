@@ -12,7 +12,7 @@ export function Button({
   return (
     <button
       type={type}
-      className={`h-11 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 active:scale-95 ${className}`}
+      className={`h-11 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-5 text-[13px] font-semibold text-white shadow-sm transition hover:opacity-90 active:scale-95 ${className}`}
     >
       {children}
     </button>

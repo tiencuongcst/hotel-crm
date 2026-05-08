@@ -37,6 +37,7 @@ type CustomerStay = {
   source_customer_id: string | null;
   customer_identity: string;
   customer_name: string | null;
+  company_name: string | null;
   normalized_phone: string | null;
   phone_key: string | null;
   normalized_email: string | null;
@@ -201,6 +202,7 @@ export async function GET(request: Request, context: RouteContext) {
         source_customer_id,
         customer_identity,
         customer_name,
+        company_name,
         normalized_phone,
         phone_key,
         normalized_email,
@@ -259,8 +261,8 @@ export async function GET(request: Request, context: RouteContext) {
   } catch (error) {
     return NextResponse.json(
       {
-        error: "Unexpected error",
-        details: error instanceof Error ? error.message : String(error),
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );

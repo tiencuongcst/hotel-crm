@@ -5,6 +5,7 @@ type Stay = {
   source_customer_id: string | null;
   customer_identity: string;
   customer_name: string | null;
+  company_name: string | null;
   normalized_phone: string | null;
   phone_key: string | null;
   normalized_email: string | null;
@@ -32,6 +33,7 @@ export default function BookingDetail({ stay }: BookingDetailProps) {
           <Row label="Customer ID" value={stay.customer_identity} />
           <Row label="Source customer ID" value={stay.source_customer_id} />
           <Row label="Customer name" value={stay.customer_name} />
+          <Row label="Company" value={stay.company_name} />
           <Row label="Phone" value={stay.normalized_phone} />
           <Row label="Phone key" value={stay.phone_key} />
           <Row label="Email" value={stay.normalized_email} />

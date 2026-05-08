@@ -21,6 +21,7 @@ type Stay = {
   stay_id: string;
   booking_code: string | null;
   hotel_code: string | null;
+  company_name: string | null;
   check_in_date: string | null;
   check_out_date: string | null;
 };
@@ -215,6 +216,8 @@ export default async function CustomerDetailPage({ params }: PageProps) {
               customerId={customer.customer_identity}
               defaultCar={customer.car ?? null}
               defaultProfile={customer.customer_profile ?? null}
+              sourceCar={customer.source_car ?? null}
+              sourceProfile={customer.source_customer_profile ?? null}
               canEdit={canEdit}
               compact
             />
@@ -237,6 +240,7 @@ export default async function CustomerDetailPage({ params }: PageProps) {
                 <tr>
                   <th className="px-4 py-3 text-left">Booking Code</th>
                   <th className="px-4 py-3 text-left">Hotel</th>
+                  <th className="px-4 py-3 text-left">Company</th>
                   <th className="px-4 py-3 text-left">Check-in</th>
                   <th className="px-4 py-3 text-left">Check-out</th>
                 </tr>
@@ -251,7 +255,12 @@ export default async function CustomerDetailPage({ params }: PageProps) {
                     <td className="px-4 py-3 font-semibold text-slate-900">
                       {displayValue(stay.booking_code)}
                     </td>
-                    <td className="px-4 py-3">{displayValue(stay.hotel_code)}</td>
+                    <td className="px-4 py-3">
+                      {displayValue(stay.hotel_code)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {displayValue(stay.company_name)}
+                    </td>
                     <td className="px-4 py-3">
                       {formatDate(stay.check_in_date)}
                     </td>
@@ -264,7 +273,7 @@ export default async function CustomerDetailPage({ params }: PageProps) {
                 {sortedStays.length === 0 && (
                   <tr>
                     <td
-                      colSpan={4}
+                      colSpan={5}
                       className="px-4 py-10 text-center text-slate-400"
                     >
                       Chưa có booking history
